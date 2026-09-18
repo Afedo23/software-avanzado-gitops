@@ -1,0 +1,74 @@
+# Reemplaza al Deployment de api-gateway (Practica 5/7) SOLO para este
+# servicio, que es el punto de entrada del sistema y por eso el candidato
+# natural para demostrar entrega progresiva. Los demas servicios (P5)
+# pueden seguir como Deployment normal via Helm/ArgoCD; convertirlos a
+# Rollout es una extension directa de este mismo patron.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: api-gateway
+  namespace: sa-p8
+  labels:
+    app: api-gateway
+spec:
+  replicas: 4
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: api-gateway
+          # kustomize (images:) sobreescribe este tag; NUNCA se usa "latest".
+          image: ghcr.io/usuario/sa-p8/api-gateway:0.0.0-placeholder
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 300m, memory: 256Mi }
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+
+  # Canary basico (sin service mesh / trafficRouting): el Service normal
+  # balancea entre los pods estables y los del canary segun el numero de
+  # replicas de cada ReplicaSet, que es lo que "setWeight" ajusta.
+  strategy:
+    canary:
+      steps:
+        - setWeight: 20
+        - analysis:
+            templates:
+              - templateName: api-gateway-smoke-analysis
+        - pause: { duration: 60 }
+        - setWeight: 50
+        - analysis:
+            templates:
+              - templateName: api-gateway-smoke-analysis
+        - pause: { duration: 60 }
+        - setWeight: 100

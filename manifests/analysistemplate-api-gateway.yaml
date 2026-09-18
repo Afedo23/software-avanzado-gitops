@@ -1,0 +1,42 @@
+# Puerta de calidad que condiciona cada promocion del Rollout.
+# provider.job = ejecuta un Job real que golpea /health del servicio;
+# si el Job termina con exit code != 0, el Rollout aborta y revierte
+# (setWeight vuelve a 0 y ArgoCD/Rollouts dejan la version anterior).
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: api-gateway-smoke-analysis
+  namespace: sa-p8
+spec:
+  args:
+    - name: service-name
+      value: api-gateway
+  metrics:
+    - name: smoke-health-check
+      count: 1
+      failureLimit: 0
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: smoke-test
+                    image: curlimages/curl:8.10.1
+                    command: ["sh", "-c"]
+                    args:
+                      - |
+                        set -e
+                        echo "Umbral: 10/10 respuestas HTTP 200 en /health"
+                        for i in $(seq 1 10); do
+                          CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+                            "http://{{args.service-name}}.sa-p8.svc.cluster.local:8080/health")
+                          echo "Intento $i -> HTTP $CODE"
+                          if [ "$CODE" != "200" ]; then
+                            echo "FALLO: se esperaba 200 y se obtuvo $CODE"
+                            exit 1
+                          fi
+                          sleep 2
+                        done
