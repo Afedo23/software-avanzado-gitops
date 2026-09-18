@@ -12,5 +12,5 @@ resources:
 #   kustomize edit set image ghcr.io/OWNER/sa-p8/api-gateway=ghcr.io/OWNER/sa-p8/api-gateway:X.Y.Z
 # lo que reescribe SOLO esta seccion. Nunca se usa "latest".
 images:
-  - name: ghcr.io/usuario/sa-p8/api-gateway
+  - name: ghcr.io/afedo23/sa-p8/api-gateway
     newTag: 0.0.0-placeholder

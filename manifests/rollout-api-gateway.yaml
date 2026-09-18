@@ -27,7 +27,7 @@ spec:
       containers:
         - name: api-gateway
           # kustomize (images:) sobreescribe este tag; NUNCA se usa "latest".
-          image: ghcr.io/usuario/sa-p8/api-gateway:0.0.0-placeholder
+          image: ghcr.io/afedo23/sa-p8/api-gateway:0.0.0-placeholder
           ports:
             - name: http
               containerPort: 8080

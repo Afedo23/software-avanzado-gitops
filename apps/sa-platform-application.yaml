@@ -12,7 +12,7 @@ spec:
 
   source:
     # TODO: debe coincidir EXACTO con REPO_GITOPS de tu p8.conf.
-    repoURL: https://github.com/usuario/software-avanzado-gitops.git
+    repoURL: https://github.com/Afedo23/software-avanzado-gitops.git
     targetRevision: main
     path: manifests
 
