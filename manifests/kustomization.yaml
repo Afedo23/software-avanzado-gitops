@@ -2,9 +2,9 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - rollout-api-gateway.yaml
-  - analysistemplate-api-gateway.yaml
-  - service-api-gateway.yaml
+- rollout-api-gateway.yaml
+- analysistemplate-api-gateway.yaml
+- service-api-gateway.yaml
   # A medida que agregues los otros 7 servicios (Deployment u otro Rollout),
   # sus manifiestos se listan aqui tambien.
 
@@ -12,5 +12,6 @@ resources:
 #   kustomize edit set image ghcr.io/OWNER/sa-p8/api-gateway=ghcr.io/OWNER/sa-p8/api-gateway:X.Y.Z
 # lo que reescribe SOLO esta seccion. Nunca se usa "latest".
 images:
-  - name: ghcr.io/afedo23/sa-p8/api-gateway
-    newTag: 0.0.0-placeholder
+- name: ghcr.io/afedo23/sa-p8/api-gateway
+  newName: ghcr.io/afedo23/sa-p8/api-gateway
+  newTag: 1.0.2
