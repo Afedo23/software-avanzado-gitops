@@ -14,4 +14,4 @@ resources:
 images:
 - name: ghcr.io/afedo23/sa-p8/api-gateway
   newName: ghcr.io/afedo23/sa-p8/api-gateway
-  newTag: 1.0.3
+  newTag: 1.0.4
