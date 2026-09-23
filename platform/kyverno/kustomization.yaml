@@ -1,0 +1,5 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # v1.19.x es la ultima con ClusterPolicy (v1.20 la elimina). Misma version que P8.
+  - https://github.com/kyverno/kyverno/releases/download/v1.19.1/install.yaml

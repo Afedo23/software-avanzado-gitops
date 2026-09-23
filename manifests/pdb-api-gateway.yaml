@@ -1,0 +1,11 @@
+# Con 4 replicas, siempre quedan >= 2 pods atendiendo mientras se drena un nodo.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-gateway-pdb
+  namespace: sa-p8
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: api-gateway

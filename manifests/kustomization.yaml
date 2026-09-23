@@ -5,6 +5,8 @@ resources:
 - rollout-api-gateway.yaml
 - analysistemplate-api-gateway.yaml
 - service-api-gateway.yaml
+- pdb-api-gateway.yaml
+- policies
   # A medida que agregues los otros 7 servicios (Deployment u otro Rollout),
   # sus manifiestos se listan aqui tambien.
 
