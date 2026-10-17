@@ -48,6 +48,35 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+            - name: metrics
+              containerPort: 9464
+          env:
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: OTEL_SERVICE_NAME
+              value: api-gateway
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observabilidad.svc.cluster.local:4318
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: http/protobuf
+            - name: OTEL_TRACES_EXPORTER
+              value: otlp
+            - name: OTEL_METRICS_EXPORTER
+              value: none
+            - name: OTEL_LOGS_EXPORTER
+              value: none
+            - name: OTEL_PROPAGATORS
+              value: tracecontext,baggage
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: service.namespace=sa-p8,k8s.pod.name=$(POD_NAME)
+            - name: METRICS_PORT
+              value: "9464"
+            - name: LOG_FORMAT
+              value: json
+            - name: AUTH_SERVICE_URL
+              value: http://auth.sa-p8.svc.cluster.local:8080
+            - name: SOLICITUDES_SERVICE_URL
+              value: http://solicitudes.sa-p8.svc.cluster.local:8080
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -72,20 +101,29 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 15
 
-  # Canary basico (sin service mesh / trafficRouting): el Service normal
-  # balancea entre los pods estables y los del canary segun el numero de
-  # replicas de cada ReplicaSet, que es lo que "setWeight" ajusta.
+  # P10: canary gobernado por METRICAS REALES (Prometheus), ya no por un Job sintetico.
+  # Sin trafico no hay evidencia, asi que el trafico lo genera el Deployment loadgen (loadgen.yaml).
   strategy:
     canary:
       steps:
         - setWeight: 20
         - analysis:
             templates:
-              - templateName: api-gateway-smoke-analysis
-        - pause: { duration: 60 }
+              - templateName: canary-metricas-prometheus
+            args:
+              - name: app
+                value: api-gateway
+              - name: canary-hash
+                valueFrom:
+                  podTemplateHashValue: Latest
         - setWeight: 50
         - analysis:
             templates:
-              - templateName: api-gateway-smoke-analysis
-        - pause: { duration: 60 }
+              - templateName: canary-metricas-prometheus
+            args:
+              - name: app
+                value: api-gateway
+              - name: canary-hash
+                valueFrom:
+                  podTemplateHashValue: Latest
         - setWeight: 100

@@ -1,0 +1,59 @@
+# Alertas por CONSUMO DEL PRESUPUESTO DE ERROR (multiventana, multi-burn-rate), no por umbral instantaneo.
+# Cada alerta: severidad, justificacion de por que amerita intervencion y runbook.
+# Se eliminaron las reglas por defecto del chart (CPU alta, pod reiniciado, etc.): nadie las atenderia
+# y no representan dolor del usuario. Esa informacion vive en el tablero, no en una alerta.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: slo-alertas-presupuesto
+  namespace: observabilidad
+  labels: {app.kubernetes.io/part-of: sa-observabilidad}
+spec:
+  groups:
+    - name: slo-alertas
+      rules:
+        - alert: SLODisponibilidadConsumoRapido
+          expr: slo:disponibilidad:burn_rate1h > 14.4 and slo:disponibilidad:burn_rate5m > 14.4
+          for: 2m
+          labels: {severity: page, slo: disponibilidad}
+          annotations:
+            summary: "Los usuarios estan recibiendo errores 5xx ahora mismo"
+            description: "Burn rate actual = {{ $value | printf \"%.1f\" }}x. A este ritmo el presupuesto de error de 30 d se agota antes de lo permitido."
+            amerita_intervencion: "Consume ~2 % del presupuesto mensual por hora; a este ritmo se agota en ~2 dias. Requiere accion en minutos."
+            runbook_url: "https://github.com/Afedo23/software-avanzado-gitops/blob/main/docs/runbooks/disponibilidad-consumo-rapido.md"
+        - alert: SLODisponibilidadConsumoLento
+          expr: slo:disponibilidad:burn_rate6h > 6 and slo:disponibilidad:burn_rate30m > 6
+          for: 15m
+          labels: {severity: ticket, slo: disponibilidad}
+          annotations:
+            summary: "Erosion sostenida de la disponibilidad"
+            description: "Burn rate actual = {{ $value | printf \"%.1f\" }}x. A este ritmo el presupuesto de error de 30 d se agota antes de lo permitido."
+            amerita_intervencion: "Agota el presupuesto en ~5 dias: no despierta a nadie, pero exige ticket en horario laboral."
+            runbook_url: "https://github.com/Afedo23/software-avanzado-gitops/blob/main/docs/runbooks/disponibilidad-consumo-lento.md"
+        - alert: SLOLatenciaConsumoRapido
+          expr: slo:latencia:burn_rate1h > 14.4 and slo:latencia:burn_rate5m > 14.4
+          for: 2m
+          labels: {severity: page, slo: latencia}
+          annotations:
+            summary: "Los usuarios perciben lentitud grave (p95 > 500 ms)"
+            description: "Burn rate actual = {{ $value | printf \"%.1f\" }}x. A este ritmo el presupuesto de error de 30 d se agota antes de lo permitido."
+            amerita_intervencion: "Mas del 72 % de las peticiones superan 500 ms durante la ventana corta: el servicio esta efectivamente degradado."
+            runbook_url: "https://github.com/Afedo23/software-avanzado-gitops/blob/main/docs/runbooks/latencia-consumo-rapido.md"
+        - alert: SLOLatenciaConsumoLento
+          expr: slo:latencia:burn_rate6h > 6 and slo:latencia:burn_rate30m > 6
+          for: 15m
+          labels: {severity: ticket, slo: latencia}
+          annotations:
+            summary: "Degradacion sostenida de la latencia"
+            description: "Burn rate actual = {{ $value | printf \"%.1f\" }}x. A este ritmo el presupuesto de error de 30 d se agota antes de lo permitido."
+            amerita_intervencion: "Tendencia que agotaria el presupuesto en dias; se atiende con ticket."
+            runbook_url: "https://github.com/Afedo23/software-avanzado-gitops/blob/main/docs/runbooks/latencia-consumo-lento.md"
+        - alert: ObservabilidadSinDatosGateway
+          expr: absent(http_requests_total{namespace="sa-p8",app="api-gateway"})
+          for: 5m
+          labels: {severity: page, slo: ambos}
+          annotations:
+            summary: "Prometheus no recibe metricas del api-gateway"
+            description: "Sin datos los dos SLO quedan ciegos y ninguna alerta de presupuesto puede dispararse."
+            amerita_intervencion: "Estar ciegos es peor que estar degradados: nadie se enteraria del siguiente fallo."
+            runbook_url: "https://github.com/Afedo23/software-avanzado-gitops/blob/main/docs/runbooks/sin-datos.md"

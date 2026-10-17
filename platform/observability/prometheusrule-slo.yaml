@@ -1,0 +1,102 @@
+# Reglas de registro de los DOS SLO (ver docs/slo.md). Ambos se miden en el borde (api-gateway),
+# que es lo que el usuario experimenta; /health y /metrics se excluyen para no diluir el indicador.
+#   SLO 1  Disponibilidad: 99.5 % de las peticiones sin 5xx, ventana 30 d  -> presupuesto de error 0.5 %
+#   SLO 2  Latencia:       95 % de las peticiones en <= 500 ms, ventana 30 d -> presupuesto de error 5 %
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: slo-reglas-de-registro
+  namespace: observabilidad
+  labels: {app.kubernetes.io/part-of: sa-observabilidad}
+spec:
+  groups:
+    - name: slo-disponibilidad
+      interval: 30s
+      rules:
+          - record: sli:disponibilidad:error_ratio_rate5m
+            expr: |
+              (sum(rate(http_requests_total{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics",status_code=~"5.."}[5m])) or vector(0))
+              /
+              sum(rate(http_requests_total{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics"}[5m]))
+          - record: sli:disponibilidad:error_ratio_rate30m
+            expr: |
+              (sum(rate(http_requests_total{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics",status_code=~"5.."}[30m])) or vector(0))
+              /
+              sum(rate(http_requests_total{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics"}[30m]))
+          - record: sli:disponibilidad:error_ratio_rate1h
+            expr: |
+              (sum(rate(http_requests_total{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics",status_code=~"5.."}[1h])) or vector(0))
+              /
+              sum(rate(http_requests_total{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics"}[1h]))
+          - record: sli:disponibilidad:error_ratio_rate6h
+            expr: |
+              (sum(rate(http_requests_total{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics",status_code=~"5.."}[6h])) or vector(0))
+              /
+              sum(rate(http_requests_total{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics"}[6h]))
+          - record: sli:disponibilidad:error_ratio_rate30d
+            expr: |
+              (sum(rate(http_requests_total{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics",status_code=~"5.."}[30d])) or vector(0))
+              /
+              sum(rate(http_requests_total{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics"}[30d]))
+          - record: sli:disponibilidad:ratio_rate5m
+            expr: 1 - sli:disponibilidad:error_ratio_rate5m
+          - record: slo:disponibilidad:burn_rate5m
+            expr: sli:disponibilidad:error_ratio_rate5m / 0.005
+          - record: slo:disponibilidad:burn_rate30m
+            expr: sli:disponibilidad:error_ratio_rate30m / 0.005
+          - record: slo:disponibilidad:burn_rate1h
+            expr: sli:disponibilidad:error_ratio_rate1h / 0.005
+          - record: slo:disponibilidad:burn_rate6h
+            expr: sli:disponibilidad:error_ratio_rate6h / 0.005
+          - record: slo:disponibilidad:error_budget_remaining:ratio30d
+            expr: 1 - (sli:disponibilidad:error_ratio_rate30d / 0.005)
+    - name: slo-latencia
+      interval: 30s
+      rules:
+          - record: sli:latencia:error_ratio_rate5m
+            expr: |
+              1 - (
+                sum(rate(http_request_duration_seconds_bucket{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics",le="0.5"}[5m]))
+                /
+                sum(rate(http_request_duration_seconds_count{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics"}[5m]))
+              )
+          - record: sli:latencia:error_ratio_rate30m
+            expr: |
+              1 - (
+                sum(rate(http_request_duration_seconds_bucket{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics",le="0.5"}[30m]))
+                /
+                sum(rate(http_request_duration_seconds_count{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics"}[30m]))
+              )
+          - record: sli:latencia:error_ratio_rate1h
+            expr: |
+              1 - (
+                sum(rate(http_request_duration_seconds_bucket{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics",le="0.5"}[1h]))
+                /
+                sum(rate(http_request_duration_seconds_count{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics"}[1h]))
+              )
+          - record: sli:latencia:error_ratio_rate6h
+            expr: |
+              1 - (
+                sum(rate(http_request_duration_seconds_bucket{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics",le="0.5"}[6h]))
+                /
+                sum(rate(http_request_duration_seconds_count{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics"}[6h]))
+              )
+          - record: sli:latencia:error_ratio_rate30d
+            expr: |
+              1 - (
+                sum(rate(http_request_duration_seconds_bucket{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics",le="0.5"}[30d]))
+                /
+                sum(rate(http_request_duration_seconds_count{namespace="sa-p8",app="api-gateway",route!~"/health.*|/metrics"}[30d]))
+              )
+          - record: sli:latencia:ratio_rate5m
+            expr: 1 - sli:latencia:error_ratio_rate5m
+          - record: slo:latencia:burn_rate5m
+            expr: sli:latencia:error_ratio_rate5m / 0.05
+          - record: slo:latencia:burn_rate30m
+            expr: sli:latencia:error_ratio_rate30m / 0.05
+          - record: slo:latencia:burn_rate1h
+            expr: sli:latencia:error_ratio_rate1h / 0.05
+          - record: slo:latencia:burn_rate6h
+            expr: sli:latencia:error_ratio_rate6h / 0.05
+          - record: slo:latencia:error_budget_remaining:ratio30d
+            expr: 1 - (sli:latencia:error_ratio_rate30d / 0.05)

@@ -1,0 +1,57 @@
+# P10: la promocion del canary la decide el COMPORTAMIENTO REAL de la version candidata, medido en Prometheus.
+# Sustituye a api-gateway-smoke-analysis (Job de pruebas sinteticas de la P8).
+# El hash del ReplicaSet candidato lo inyecta el Rollout (podTemplateHashValue: Latest) y se filtra con el
+# label rollouts_pod_template_hash que el PodMonitor copia del pod: solo cuenta el trafico del canary.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-metricas-prometheus
+  namespace: sa-p8
+spec:
+  args:
+    - name: app
+    - name: canary-hash
+    - name: max-error-ratio
+      value: "0.05"        # >5 % de respuestas 5xx en el canary aborta
+    - name: max-p95-seconds
+      value: "0.5"         # p95 > 500 ms en el canary aborta (mismo umbral que el SLO de latencia)
+  metrics:
+    # 0) Sin trafico no hay evidencia: el analisis NO puede aprobar por silencio.
+    - name: trafico-canary
+      interval: 30s
+      initialDelay: 20s
+      count: 4
+      failureLimit: 2
+      successCondition: len(result) > 0 && result[0] > 0
+      provider:
+        prometheus:
+          address: http://prometheus-operated.observabilidad.svc.cluster.local:9090
+          query: |
+            sum(rate(http_requests_total{namespace="sa-p8",app="{{args.app}}",rollouts_pod_template_hash="{{args.canary-hash}}",route!~"/health.*|/metrics"}[1m]))
+    # 1) Tasa de error medida sobre la version candidata
+    - name: tasa-error-canary
+      interval: 30s
+      initialDelay: 30s
+      count: 4
+      failureLimit: 1
+      successCondition: len(result) == 0 || isNaN(result[0]) || result[0] < {{args.max-error-ratio}}
+      provider:
+        prometheus:
+          address: http://prometheus-operated.observabilidad.svc.cluster.local:9090
+          query: |
+            (sum(rate(http_requests_total{namespace="sa-p8",app="{{args.app}}",rollouts_pod_template_hash="{{args.canary-hash}}",route!~"/health.*|/metrics",status_code=~"5.."}[1m])) or vector(0))
+            /
+            sum(rate(http_requests_total{namespace="sa-p8",app="{{args.app}}",rollouts_pod_template_hash="{{args.canary-hash}}",route!~"/health.*|/metrics"}[1m]))
+    # 2) Percentil 95 de latencia medido sobre la version candidata
+    - name: p95-latencia-canary
+      interval: 30s
+      initialDelay: 30s
+      count: 4
+      failureLimit: 1
+      successCondition: len(result) == 0 || isNaN(result[0]) || result[0] < {{args.max-p95-seconds}}
+      provider:
+        prometheus:
+          address: http://prometheus-operated.observabilidad.svc.cluster.local:9090
+          query: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(http_request_duration_seconds_bucket{namespace="sa-p8",app="{{args.app}}",rollouts_pod_template_hash="{{args.canary-hash}}",route!~"/health.*|/metrics"}[1m])))

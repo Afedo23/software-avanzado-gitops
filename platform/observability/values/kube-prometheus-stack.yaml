@@ -1,0 +1,90 @@
+# Prometheus + Alertmanager + Grafana. Grafana solo por ClusterIP (kubectl port-forward).
+# defaultRules desactivadas: las unicas alertas son las de consumo de presupuesto (platform/observability/prometheusrule-alertas.yaml).
+defaultRules:
+  create: false
+kubeEtcd: { enabled: false }
+kubeScheduler: { enabled: false }
+kubeControllerManager: { enabled: false }
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    scrapeInterval: 15s
+    evaluationInterval: 30s
+    # Descubrir PodMonitor / PrometheusRule de cualquier namespace sin exigir el label release
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    resources:
+      requests: { cpu: 200m, memory: 600Mi }
+      limits: { cpu: 700m, memory: 1200Mi }
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources: { requests: { storage: 10Gi } }
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: 20m, memory: 50Mi }
+      limits: { cpu: 100m, memory: 128Mi }
+  config:
+    route:
+      receiver: tickets
+      group_by: [alertname, slo]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        - receiver: guardia
+          matchers: [severity="page"]
+          repeat_interval: 1h
+    receivers:
+      # Sin integracion externa: la alerta es visible en Alertmanager (:9093). Para notificar de verdad,
+      # agregue aqui webhook_configs / email_configs con el secreto en un SealedSecret.
+      - name: guardia
+      - name: tickets
+grafana:
+  defaultDashboardsEnabled: false
+  service: { type: ClusterIP }
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 300m, memory: 384Mi }
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+  additionalDataSources:
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki.observabilidad.svc.cluster.local:3100
+      jsonData:
+        derivedFields:
+          - name: trace_id
+            matcherType: label
+            matcherRegex: trace_id
+            url: "$${__value.raw}"
+            datasourceUid: tempo
+    - name: Tempo
+      uid: tempo
+      type: tempo
+      access: proxy
+      url: http://tempo.observabilidad.svc.cluster.local:3200
+      jsonData:
+        tracesToLogsV2:
+          datasourceUid: loki
+          spanStartTimeShift: "-5m"
+          spanEndTimeShift: "5m"
+          filterByTraceID: true
+          customQuery: true
+          query: '{service_name="$${__span.tags["service.name"]}"} | trace_id="$${__span.traceId}"'
+        serviceMap: { datasourceUid: prometheus }
+prometheus-node-exporter:
+  resources:
+    limits: { cpu: 100m, memory: 64Mi }
+kube-state-metrics:
+  resources:
+    limits: { cpu: 100m, memory: 128Mi }

@@ -1,0 +1,42 @@
+# Trafico sintetico CONTINUO y de bajo volumen contra el api-gateway. No es una prueba que decida nada:
+# solo garantiza que el canary reciba peticiones reales para que Prometheus tenga que medir.
+# Ajuste las rutas (RUTAS) a las que expone su api-gateway.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgen
+  namespace: sa-p8
+  labels: {app: loadgen}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: loadgen}}
+  template:
+    metadata:
+      labels: {app: loadgen}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 100, runAsGroup: 101}
+      containers:
+        - name: loadgen
+          image: curlimages/curl:8.10.1
+          env:
+            - name: BASE
+              value: http://api-gateway.sa-p8.svc.cluster.local:8080
+            - name: RUTAS
+              value: "/health /api/solicitudes /api/auth/login"
+          command: ["sh", "-c"]
+          args:
+            - |
+              while true; do
+                for r in $RUTAS; do
+                  curl -s -o /dev/null -m 3 "$BASE$r" || true
+                done
+                sleep 0.5
+              done
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 50m, memory: 32Mi}

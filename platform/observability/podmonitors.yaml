@@ -1,0 +1,18 @@
+# Prometheus raspa el puerto "metrics" (9464) de cada pod de los tres servicios.
+# podTargetLabels copia app y rollouts-pod-template-hash: con ese ultimo el AnalysisTemplate
+# distingue el trafico de la version CANDIDATA del de la estable.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: sa-servicios
+  namespace: observabilidad
+spec:
+  namespaceSelector: {matchNames: [sa-p8]}
+  selector:
+    matchExpressions:
+      - {key: app, operator: In, values: [api-gateway, auth, solicitudes]}
+  podTargetLabels: [app, rollouts-pod-template-hash]
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
