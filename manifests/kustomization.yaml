@@ -21,10 +21,10 @@ resources:
 images:
 - name: ghcr.io/afedo23/sa-p8/api-gateway
   newName: ghcr.io/afedo23/sa-p8/api-gateway
-  newTag: 1.2.1
+  newTag: 1.2.2
 - name: ghcr.io/afedo23/sa-p8/auth-service
   newName: ghcr.io/afedo23/sa-p8/auth-service
-  newTag: 1.2.1
+  newTag: 1.2.2
 - name: ghcr.io/afedo23/sa-p8/solicitudes-service
   newName: ghcr.io/afedo23/sa-p8/solicitudes-service
-  newTag: 1.2.1
+  newTag: 1.2.2
