@@ -65,6 +65,8 @@ spec:
               value: tracecontext,baggage
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: service.namespace=sa-p8,k8s.pod.name=$(POD_NAME)
+            - name: PORT
+              value: "8080"
             - name: METRICS_PORT
               value: "9464"
             - name: LOG_FORMAT
