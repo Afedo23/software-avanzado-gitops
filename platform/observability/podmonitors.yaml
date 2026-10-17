@@ -13,6 +13,6 @@ spec:
       - {key: app, operator: In, values: [api-gateway, auth, solicitudes]}
   podTargetLabels: [app, rollouts-pod-template-hash]
   podMetricsEndpoints:
-    - port: metrics
+    - port: http
       path: /metrics
       interval: 15s
