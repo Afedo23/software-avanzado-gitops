@@ -19,12 +19,12 @@ resources:
 #   kustomize edit set image ghcr.io/OWNER/sa-p8/api-gateway=ghcr.io/OWNER/sa-p8/api-gateway:X.Y.Z
 # lo que reescribe SOLO esta seccion. Nunca se usa "latest".
 images:
-- name: ghcr.io/afedo23/sa-p8/auth-service
-  newName: ghcr.io/afedo23/sa-p8/auth-service
-  newTag: 0.0.0-placeholder   # lo reescribe el job update-gitops-pr
-- name: ghcr.io/afedo23/sa-p8/solicitudes-service
-  newName: ghcr.io/afedo23/sa-p8/solicitudes-service
-  newTag: 0.0.0-placeholder
 - name: ghcr.io/afedo23/sa-p8/api-gateway
   newName: ghcr.io/afedo23/sa-p8/api-gateway
-  newTag: 1.1.1
+  newTag: 1.2.1
+- name: ghcr.io/afedo23/sa-p8/auth-service
+  newName: ghcr.io/afedo23/sa-p8/auth-service
+  newTag: 1.2.1
+- name: ghcr.io/afedo23/sa-p8/solicitudes-service
+  newName: ghcr.io/afedo23/sa-p8/solicitudes-service
+  newTag: 1.2.1
